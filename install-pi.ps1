@@ -2,8 +2,11 @@
 # Usage:
 #   .\install-pi.ps1               # Full flow: install deps -> build -> npm link
 #   .\install-pi.ps1 -SkipInstall  # Skip dependency install; rebuild + link only
+#   .\install-pi.ps1 -Sync         # Sync upstream/main, rebase zhing2006, and push both
+#   .\install-pi.ps1 -Sync -SkipInstall
 param(
-	[switch]$SkipInstall
+	[switch]$SkipInstall,
+	[switch]$Sync
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,6 +25,45 @@ function Invoke-Step {
 	finally {
 		Pop-Location
 	}
+}
+
+function Invoke-Git {
+	param([string[]]$Arguments)
+	Write-Host "==> git $($Arguments -join ' ')" -ForegroundColor Cyan
+	& git @Arguments
+	if ($LASTEXITCODE -ne 0) {
+		throw "Git command failed (exit code $LASTEXITCODE): git $($Arguments -join ' ')"
+	}
+}
+
+function Sync-Branches {
+	Push-Location $repoRoot
+	try {
+		$gitStatus = & git status --porcelain
+		if ($LASTEXITCODE -ne 0) {
+			throw "Unable to read git status."
+		}
+		if ($gitStatus) {
+			throw "Cannot sync branches with uncommitted changes. Commit or remove them first."
+		}
+
+		Invoke-Git @("show-ref", "--verify", "--quiet", "refs/heads/main")
+		Invoke-Git @("show-ref", "--verify", "--quiet", "refs/heads/zhing2006")
+		Invoke-Git @("fetch", "upstream", "main")
+		Invoke-Git @("switch", "main")
+		Invoke-Git @("merge", "--ff-only", "upstream/main")
+		Invoke-Git @("push", "origin", "main")
+		Invoke-Git @("switch", "zhing2006")
+		Invoke-Git @("rebase", "main")
+		Invoke-Git @("push", "--force-with-lease", "origin", "zhing2006")
+	}
+	finally {
+		Pop-Location
+	}
+}
+
+if ($Sync) {
+	Sync-Branches
 }
 
 if (-not $SkipInstall) {
