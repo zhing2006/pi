@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.85.1] - 2026-09-05
+
 ### New Features
 
 - **GPT-6 Astra** — Available through OpenAI API keys and OpenAI Codex subscriptions. See [API Keys](docs/providers.md#api-keys) and [OpenAI Codex](docs/providers.md#openai-codex).
